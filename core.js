@@ -1,1 +1,1 @@
-console.log("クーをつくるよ");
+console.log("クーをつくるよ！！");
