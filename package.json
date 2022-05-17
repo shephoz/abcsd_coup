@@ -1,0 +1,16 @@
+{
+  "name": "abcsd_coup",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "core.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "array-shuffle": "^3.0.0",
+    "inquirer": "^8.2.4"
+  }
+}
