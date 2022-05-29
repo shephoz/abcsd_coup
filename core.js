@@ -54,6 +54,10 @@ class Deck {
     return [this.cards.shift(), this.cards.shift()];
   }
 
+  dealOne() {
+    return this.cards.shift();
+  }
+
   push(card) {
     this.cards.push(card);
   }
@@ -182,11 +186,12 @@ class Player {
 
     switch (answer.action) {
       case "収入":
+        // 収入/１金獲得/なし/なし
         this.coins += 1;
         break;
 
       case "援助":
-        // 公爵ブロック
+        // 援助/２金獲得/なし/公爵
         let blocked = false;
         for (let opposite of this.oppositeList) {
           if (await opposite.confirmBlock(this, action)) {
@@ -199,7 +204,8 @@ class Player {
         }
         break;
 
-      case "クー": //10枚以上のときはクー必須。
+      case "クー": //TODO: 10枚以上のときはクー必須。
+        // クー/７金を支払い、１人の影響力を失わせる/なし/なし
         if (this.coins >= 7) {
           const opposite = await this.opposite();
           await opposite.kill();
@@ -211,14 +217,20 @@ class Player {
         break;
 
       case "徴税":
-        this.coins += 3;
+        // 徴税/３金獲得/公爵/なし
+        if (!(await this.checkDoubt(answer.action))) {
+          this.coins += 3;
+        }
         break;
 
       case "暗殺":
-        // 女伯ブロック
+        // 暗殺/３金を支払い、１人の影響力を失わせる/刺客/女伯
         if (this.coins >= 3) {
           const opposite = await this.opposite();
-          if (!(await opposite.confirmBlock(this, answer.action))) {
+          if (
+            !(await opposite.confirmBlock(this, answer.action)) &&
+            !(await this.checkDoubt(answer.action))
+          ) {
             await opposite.kill();
           }
           this.coins -= 3;
@@ -229,19 +241,28 @@ class Player {
         break;
 
       case "交換":
-        await this.exchange();
+        // 交換/山札の上から２枚を確認して、手札の１枚と交換。２枚を山札に戻してシャッフルする/大使/なし
+        if (!(await this.checkDoubt(answer.action))) {
+          await this.exchange();
+        }
         break;
 
       case "強奪":
-        // 船長 or 大使 ブロック
+        // 強奪/１人から２金を奪う/船長/船長or大使
         const opposite = await this.opposite();
         if (opposite.coins >= 2) {
-          if (!(await opposite.confirmBlock(this, answer.action))) {
+          if (
+            !(await opposite.confirmBlock(this, answer.action)) &&
+            !(await this.checkDoubt(answer.action))
+          ) {
             this.coins += 2;
             opposite.coins -= 2;
           }
         } else if (opposite.coins == 1) {
-          if (!(await opposite.confirmBlock(this, answer.action))) {
+          if (
+            !(await opposite.confirmBlock(this, answer.action)) &&
+            !(await this.checkDoubt(answer.action))
+          ) {
             this.coins += 1;
             opposite.coins -= 1;
           }
@@ -270,13 +291,51 @@ class Player {
     return answer.choice;
   }
 
-  async checkBlock(action) {
+  async checkDoubt(action) {
     for (let opposite of this.oppositeList) {
-      if (await opposite.confirmBlock(this, action)) {
+      if (await opposite.confirmDoubt(this, action)) {
         return true;
       }
     }
     return false;
+  }
+
+  async confirmDoubt(player, action) {
+    const answer = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "confirm",
+        message: `${this.name}: ${player.name}の${action}をダウトする？`,
+        default: false,
+      },
+    ]);
+    if (answer.confirm) {
+      // TODO:ブロックのダウト
+      const necessary = {
+        徴税: ["Duke"],
+        暗殺: ["Assassin"],
+        交換: ["Ambassador"],
+        強奪: ["Captain"],
+      };
+      const found = player.hands.find((hand) =>
+        necessary[action].includes(hand.name())
+      );
+      if (found) {
+        console.log("ダウト失敗");
+        await this.kill();
+        player.hands = player.hands.filter((hand) => hand.id !== found.id);
+        this.deck.push(found);
+        this.deck.shuffle();
+        player.hands = [this.deck.dealOne(), ...player.hands];
+        return false;
+      } else {
+        console.log("ダウト成功");
+        await player.kill();
+        return true;
+      }
+    } else {
+      return false;
+    }
   }
 
   async confirmBlock(player, action) {
