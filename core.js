@@ -164,6 +164,13 @@ class Player {
   }
 
   async turn() {
+    if (this.hands.length == 0) return;
+    if (
+      this.oppositeList.filter((player) => player.hands.length > 0).length == 0
+    ) {
+      console.log(`${this.name}の勝利！！！！！`);
+    }
+
     const answer = await inquirer.prompt([
       {
         type: "list",
@@ -179,7 +186,17 @@ class Player {
         break;
 
       case "援助":
-        this.coins += 2;
+        // 公爵ブロック
+        let blocked = false;
+        for (let opposite of this.oppositeList) {
+          if (await opposite.confirmBlock(this, action)) {
+            blocked = true;
+            break;
+          }
+        }
+        if (!blocked) {
+          this.coins += 2;
+        }
         break;
 
       case "クー": //10枚以上のときはクー必須。
@@ -198,9 +215,12 @@ class Player {
         break;
 
       case "暗殺":
+        // 女伯ブロック
         if (this.coins >= 3) {
           const opposite = await this.opposite();
-          await opposite.kill();
+          if (!(await opposite.confirmBlock(this, answer.action))) {
+            await opposite.kill();
+          }
           this.coins -= 3;
         } else {
           console.log("3枚ないよ");
@@ -213,13 +233,18 @@ class Player {
         break;
 
       case "強奪":
+        // 船長 or 大使 ブロック
         const opposite = await this.opposite();
         if (opposite.coins >= 2) {
-          this.coins += 2;
-          opposite.coins -= 2;
+          if (!(await opposite.confirmBlock(this, answer.action))) {
+            this.coins += 2;
+            opposite.coins -= 2;
+          }
         } else if (opposite.coins == 1) {
-          this.coins += 1;
-          opposite.coins -= 1;
+          if (!(await opposite.confirmBlock(this, answer.action))) {
+            this.coins += 1;
+            opposite.coins -= 1;
+          }
         } else if (opposite.coins == 0) {
           console.log(`${opposite.name}はコイン持ってないよ`);
           await this.turn();
@@ -234,13 +259,41 @@ class Player {
         type: "list",
         name: "choice",
         message: "プレイヤー選択",
-        choices: this.oppositeList.map((opposite) => ({
-          name: opposite.name,
-          value: opposite,
-        })),
+        choices: this.oppositeList
+          .filter((opposite) => opposite.hands.length > 0)
+          .map((opposite) => ({
+            name: opposite.name,
+            value: opposite,
+          })),
       },
     ]);
     return answer.choice;
+  }
+
+  async checkBlock(action) {
+    for (let opposite of this.oppositeList) {
+      if (await opposite.confirmBlock(this, action)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async confirmBlock(player, action) {
+    const answer = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "confirm",
+        message: `${this.name}: ${player.name}の${action}をブロックする？`,
+        default: false,
+      },
+    ]);
+    if (answer.confirm) {
+      console.log(`${this.name}: ${player.name}の${action}をブロックした！`);
+      return true;
+    } else {
+      return false;
+    }
   }
 }
 
@@ -258,14 +311,19 @@ async function game() {
   const player2 = new Player(2, deck, "じろう");
   console.log(player2.hands);
 
-  player1.oppositeList = [player2];
-  player2.oppositeList = [player1];
+  const player3 = new Player(3, deck, "ざぶろう");
+  console.log(player3.hands);
+
+  player1.oppositeList = [player2, player3];
+  player2.oppositeList = [player1, player3];
+  player3.oppositeList = [player1, player2];
 
   showDeck(deck);
 
   while (true) {
     await player1.turn();
     await player2.turn();
+    await player3.turn();
 
     console.log("===");
     console.log(player1.name);
@@ -275,6 +333,10 @@ async function game() {
     console.log(player2.name);
     console.log(player2.coins);
     console.log(player2.hands);
+    console.log("===");
+    console.log(player3.name);
+    console.log(player3.coins);
+    console.log(player3.hands);
     console.log("===");
     showDeck(deck);
   }
