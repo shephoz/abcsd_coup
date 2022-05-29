@@ -60,10 +60,11 @@ class Deck {
 }
 
 class Player {
-  constructor(deck, name) {
+  constructor(id, deck, name) {
+    this.id = id;
     this.deck = deck;
     this.name = name;
-    this.coins = 3;
+    this.coins = 2;
     this.hands = [...deck.deal()];
   }
 
@@ -161,6 +162,86 @@ class Player {
     const howManyExchanged = answer.choice.filter((i) => i < 2).length;
     console.log(`${howManyExchanged}枚交換しました`);
   }
+
+  async turn() {
+    const answer = await inquirer.prompt([
+      {
+        type: "list",
+        name: "action",
+        message: `${this.name}のターン`,
+        choices: ["収入", "援助", "クー", "徴税", "暗殺", "交換", "強奪"],
+      },
+    ]);
+
+    switch (answer.action) {
+      case "収入":
+        this.coins += 1;
+        break;
+
+      case "援助":
+        this.coins += 2;
+        break;
+
+      case "クー": //10枚以上のときはクー必須。
+        if (this.coins >= 7) {
+          const opposite = await this.opposite();
+          await opposite.kill();
+          this.coins -= 7;
+        } else {
+          console.log("7枚ないよ");
+          await this.turn();
+        }
+        break;
+
+      case "徴税":
+        this.coins += 3;
+        break;
+
+      case "暗殺":
+        if (this.coins >= 3) {
+          const opposite = await this.opposite();
+          await opposite.kill();
+          this.coins -= 3;
+        } else {
+          console.log("3枚ないよ");
+          await this.turn();
+        }
+        break;
+
+      case "交換":
+        await this.exchange();
+        break;
+
+      case "強奪":
+        const opposite = await this.opposite();
+        if (opposite.coins >= 2) {
+          this.coins += 2;
+          opposite.coins -= 2;
+        } else if (opposite.coins == 1) {
+          this.coins += 1;
+          opposite.coins -= 1;
+        } else if (opposite.coins == 0) {
+          console.log(`${opposite.name}はコイン持ってないよ`);
+          await this.turn();
+        }
+        break;
+    }
+  }
+
+  async opposite() {
+    const answer = await inquirer.prompt([
+      {
+        type: "list",
+        name: "choice",
+        message: "プレイヤー選択",
+        choices: this.oppositeList.map((opposite) => ({
+          name: opposite.name,
+          value: opposite,
+        })),
+      },
+    ]);
+    return answer.choice;
+  }
 }
 
 function showDeck(deck) {
@@ -171,75 +252,33 @@ async function game() {
   const deck = new Deck();
   showDeck(deck);
 
-  const player1 = new Player(deck, "たろう");
+  const player1 = new Player(1, deck, "たろう");
   console.log(player1.hands);
 
-  const player2 = new Player(deck, "じろう");
+  const player2 = new Player(2, deck, "じろう");
   console.log(player2.hands);
+
+  player1.oppositeList = [player2];
+  player2.oppositeList = [player1];
 
   showDeck(deck);
 
-  const player1Answer = await inquirer.prompt([
-    {
-      type: "list",
-      name: "action",
-      message: `${player1.name}のターン`,
-      choices: ["収入", "援助", "クー", "徴税", "暗殺", "交換", "強奪"],
-    },
-  ]);
+  while (true) {
+    await player1.turn();
+    await player2.turn();
 
-  switch (player1Answer.action) {
-    case "収入":
-      player1.coins += 1;
-      break;
-
-    case "援助":
-      player1.coins += 2;
-      break;
-
-    case "クー": //10枚以上のときはクー必須。
-      if (player1.coins >= 7) {
-        await player2.kill();
-        player1.coins -= 7;
-      } else {
-        console.log("7枚ないよ");
-      }
-      break;
-
-    case "徴税":
-      player1.coins += 3;
-      break;
-
-    case "暗殺":
-      if (player1.coins >= 3) {
-        await player2.kill();
-        player1.coins -= 3;
-      } else {
-        console.log("3枚ないよ");
-      }
-      break;
-
-    case "交換":
-      await player1.exchange();
-      break;
-
-    case "強奪":
-      player1.coins += 2;
-      player2.coins -= 2;
-      break;
+    console.log("===");
+    console.log(player1.name);
+    console.log(player1.coins);
+    console.log(player1.hands);
+    console.log("===");
+    console.log(player2.name);
+    console.log(player2.coins);
+    console.log(player2.hands);
+    console.log("===");
+    showDeck(deck);
   }
-
-  console.log("===");
-  console.log(player1.name);
-  console.log(player1.coins);
-  console.log(player1.hands);
-  console.log("===");
-  console.log(player2.name);
-  console.log(player2.coins);
-  console.log(player2.hands);
-  console.log("===");
-  showDeck(deck);
 }
 
 game();
-//１43行目（20220514山内記載）
+//245行目（20220529山内記載）
