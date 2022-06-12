@@ -24,6 +24,23 @@ class Captain extends Card {}
 class Ambassador extends Card {}
 class Contessa extends Card {}
 
+class PlayerList {
+  constructor() {
+    this.playerList = [];
+  }
+
+  add(player) {
+    this.playerList.push(player);
+    console.log(`added ${player.name} to game.`);
+  }
+
+  oppositeList(player) {
+    return this.playerList
+      .filter((pl) => pl != player)
+      .filter((pl) => pl.hands.length);
+  }
+}
+
 class Deck {
   constructor() {
     this.cards = [
@@ -64,9 +81,10 @@ class Deck {
 }
 
 class Player {
-  constructor(id, deck, name) {
+  constructor(id, deck, playerList, name) {
     this.id = id;
     this.deck = deck;
+    this.playerList = playerList;
     this.name = name;
     this.coins = 2;
     this.hands = [...deck.deal()];
@@ -169,20 +187,26 @@ class Player {
 
   async turn() {
     if (this.hands.length == 0) return;
-    if (
-      this.oppositeList.filter((player) => player.hands.length > 0).length == 0
-    ) {
+
+    if (this.playerList.oppositeList(this).length == 0) {
       console.log(`${this.name}の勝利！！！！！`);
+      return;
     }
 
-    const answer = await inquirer.prompt([
-      {
-        type: "list",
-        name: "action",
-        message: `${this.name}のターン`,
-        choices: ["収入", "援助", "クー", "徴税", "暗殺", "交換", "強奪"],
-      },
-    ]);
+    let answer;
+    if (this.coins < 10) {
+      answer = await inquirer.prompt([
+        {
+          type: "list",
+          name: "action",
+          message: `${this.name}のターン`,
+          choices: ["収入", "援助", "クー", "徴税", "暗殺", "交換", "強奪"],
+        },
+      ]);
+    } else {
+      console.log(`${this.name}は10枚コインを持っているのでクーを行います`);
+      answer = { action: "クー" };
+    }
 
     switch (answer.action) {
       case "収入":
@@ -193,7 +217,7 @@ class Player {
       case "援助":
         // 援助/２金獲得/なし/公爵
         let blocked = false;
-        for (let opposite of this.oppositeList) {
+        for (let opposite of this.playerList.oppositeList(this)) {
           if (await opposite.confirmBlock(this, action)) {
             blocked = true;
             break;
@@ -204,7 +228,7 @@ class Player {
         }
         break;
 
-      case "クー": //TODO: 10枚以上のときはクー必須。
+      case "クー":
         // クー/７金を支払い、１人の影響力を失わせる/なし/なし
         if (this.coins >= 7) {
           const opposite = await this.opposite();
@@ -218,7 +242,7 @@ class Player {
 
       case "徴税":
         // 徴税/３金獲得/公爵/なし
-        if (!(await this.checkDoubt(answer.action))) {
+        if (!(await this.checkDoubt("action", answer.action))) {
           this.coins += 3;
         }
         break;
@@ -227,11 +251,10 @@ class Player {
         // 暗殺/３金を支払い、１人の影響力を失わせる/刺客/女伯
         if (this.coins >= 3) {
           const opposite = await this.opposite();
-          if (
-            !(await opposite.confirmBlock(this, answer.action)) &&
-            !(await this.checkDoubt(answer.action))
-          ) {
-            await opposite.kill();
+          if (!(await opposite.confirmBlock(this, answer.action))) {
+            if (!(await this.checkDoubt("action", answer.action))) {
+              await opposite.kill();
+            }
           }
           this.coins -= 3;
         } else {
@@ -242,7 +265,7 @@ class Player {
 
       case "交換":
         // 交換/山札の上から２枚を確認して、手札の１枚と交換。２枚を山札に戻してシャッフルする/大使/なし
-        if (!(await this.checkDoubt(answer.action))) {
+        if (!(await this.checkDoubt("action", answer.action))) {
           await this.exchange();
         }
         break;
@@ -253,7 +276,7 @@ class Player {
         if (opposite.coins >= 2) {
           if (
             !(await opposite.confirmBlock(this, answer.action)) &&
-            !(await this.checkDoubt(answer.action))
+            !(await this.checkDoubt("action", answer.action))
           ) {
             this.coins += 2;
             opposite.coins -= 2;
@@ -261,7 +284,7 @@ class Player {
         } else if (opposite.coins == 1) {
           if (
             !(await opposite.confirmBlock(this, answer.action)) &&
-            !(await this.checkDoubt(answer.action))
+            !(await this.checkDoubt("action", answer.action))
           ) {
             this.coins += 1;
             opposite.coins -= 1;
@@ -280,45 +303,53 @@ class Player {
         type: "list",
         name: "choice",
         message: "プレイヤー選択",
-        choices: this.oppositeList
-          .filter((opposite) => opposite.hands.length > 0)
-          .map((opposite) => ({
-            name: opposite.name,
-            value: opposite,
-          })),
+        choices: this.playerList.oppositeList(this).map((opposite) => ({
+          name: opposite.name,
+          value: opposite,
+        })),
       },
     ]);
     return answer.choice;
   }
 
-  async checkDoubt(action) {
-    for (let opposite of this.oppositeList) {
-      if (await opposite.confirmDoubt(this, action)) {
+  async checkDoubt(type, action) {
+    console.log(action);
+    for (let opposite of this.playerList.oppositeList(this)) {
+      if (await opposite.confirmDoubt(this, type, action)) {
         return true;
       }
     }
     return false;
   }
 
-  async confirmDoubt(player, action) {
+  async confirmDoubt(player, type, action) {
     const answer = await inquirer.prompt([
       {
         type: "confirm",
         name: "confirm",
-        message: `${this.name}: ${player.name}の${action}をダウトする？`,
+        message: `${this.name}: ${player.name}の${action}${
+          type == "block" ? "の妨害" : ""
+        }をダウトする？`,
         default: false,
       },
     ]);
     if (answer.confirm) {
       // TODO:ブロックのダウト
       const necessary = {
-        徴税: ["Duke"],
-        暗殺: ["Assassin"],
-        交換: ["Ambassador"],
-        強奪: ["Captain"],
+        action: {
+          徴税: ["Duke"],
+          暗殺: ["Assassin"],
+          交換: ["Ambassador"],
+          強奪: ["Captain"],
+        },
+        block: {
+          援助: ["Duke"],
+          暗殺: ["Contessa"],
+          強奪: ["Captain", "Ambassador"],
+        },
       };
       const found = player.hands.find((hand) =>
-        necessary[action].includes(hand.name())
+        necessary[type][action].includes(hand.name())
       );
       if (found) {
         console.log("ダウト失敗");
@@ -347,7 +378,7 @@ class Player {
         default: false,
       },
     ]);
-    if (answer.confirm) {
+    if (answer.confirm && !(await this.checkDoubt("block", action))) {
       console.log(`${this.name}: ${player.name}の${action}をブロックした！`);
       return true;
     } else {
@@ -361,45 +392,42 @@ function showDeck(deck) {
 }
 
 async function game() {
+  const players = ["naito", "yamauchi"];
+  if (players.length > 7) {
+    console.log("定員オーバー");
+    return;
+  }
+
+  let playerId = 0;
+  const playerList = new PlayerList();
+
   const deck = new Deck();
   showDeck(deck);
 
-  const player1 = new Player(1, deck, "たろう");
-  console.log(player1.hands);
+  for (const playerName of players) {
+    playerId++;
+    const player = new Player(playerId, deck, playerList, playerName);
+    console.log(player.hands);
 
-  const player2 = new Player(2, deck, "じろう");
-  console.log(player2.hands);
-
-  const player3 = new Player(3, deck, "ざぶろう");
-  console.log(player3.hands);
-
-  player1.oppositeList = [player2, player3];
-  player2.oppositeList = [player1, player3];
-  player3.oppositeList = [player1, player2];
+    playerList.add(player);
+  }
 
   showDeck(deck);
 
   while (true) {
-    await player1.turn();
-    await player2.turn();
-    await player3.turn();
-
-    console.log("===");
-    console.log(player1.name);
-    console.log(player1.coins);
-    console.log(player1.hands);
-    console.log("===");
-    console.log(player2.name);
-    console.log(player2.coins);
-    console.log(player2.hands);
-    console.log("===");
-    console.log(player3.name);
-    console.log(player3.coins);
-    console.log(player3.hands);
-    console.log("===");
+    for (const player of playerList.playerList) {
+      await player.turn();
+      console.log("===");
+      console.log(player.name);
+      console.log(player.coins);
+      console.log(player.hands);
+      console.log("===");
+    }
     showDeck(deck);
   }
 }
 
 game();
 //245行目（20220529山内記載）
+
+// TODO: 三択にする（ダウト・ブロック・何もしない）
