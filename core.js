@@ -36,27 +36,27 @@ class PlayerList {
 
   oppositeList(player) {
     return this.playerList
-      .filter((pl) => pl != player)
-      .filter((pl) => pl.hands.length);
+      .filter((pl) => pl != player) // 自分(player)以外のプレーヤーのリストを返す
+      .filter((pl) => pl.hands.length); // 手札が0枚（=死亡）のプレイヤーは除外
   }
 }
 
 class Deck {
   constructor() {
     this.cards = [
+      new Duke(), // 男爵
       new Duke(),
       new Duke(),
-      new Duke(),
+      new Assassin(), // 刺客
       new Assassin(),
       new Assassin(),
-      new Assassin(),
+      new Captain(), // 船長
       new Captain(),
       new Captain(),
-      new Captain(),
+      new Ambassador(), // 大使
       new Ambassador(),
       new Ambassador(),
-      new Ambassador(),
-      new Contessa(),
+      new Contessa(), // 女伯
       new Contessa(),
       new Contessa(),
     ];
@@ -68,14 +68,17 @@ class Deck {
   }
 
   deal() {
+    // cards.shift() で山札の先頭から１要素取り出す。それを２回繰り返している
     return [this.cards.shift(), this.cards.shift()];
   }
 
   dealOne() {
+    // 上と同じく
     return this.cards.shift();
   }
 
   push(card) {
+    // 山札にカードを追加する。プレイヤーの手札から山札に戻すときにこのメソッドを使う
     this.cards.push(card);
   }
 }
