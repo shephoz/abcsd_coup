@@ -10,7 +10,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "argv": "^0.0.2",
     "array-shuffle": "^3.0.0",
+    "dotenv": "^16.0.1",
+    "firebase": "^9.8.4",
     "inquirer": "^8.2.4"
   }
 }

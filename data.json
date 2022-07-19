@@ -1,0 +1,70 @@
+{
+  "game": {
+    "currentPlayer": null,
+    "action": ""
+  },
+  "deck": [
+    {
+      "kind": "Duke"
+    },
+    {
+      "kind": "Duke"
+    },
+    {
+      "kind": "Duke"
+    },
+    {
+      "kind": "Assassin"
+    },
+    {
+      "kind": "Assassin"
+    },
+    {
+      "kind": "Assassin"
+    },
+    {
+      "kind": "Captain"
+    },
+    {
+      "kind": "Captain"
+    },
+    {
+      "kind": "Captain"
+    },
+    {
+      "kind": "Ambassador"
+    },
+    {
+      "kind": "Ambassador"
+    },
+    {
+      "kind": "Ambassador"
+    },
+    {
+      "kind": "Contessa"
+    },
+    {
+      "kind": "Contessa"
+    },
+    {
+      "kind": "Contessa"
+    }
+  ],
+  "players": [
+    {
+      "name": "内藤",
+      "coins": 2,
+      "hands": []
+    },
+    {
+      "name": "山内",
+      "coins": 2,
+      "hands": []
+    },
+    {
+      "name": "北島",
+      "coins": 2,
+      "hands": []
+    }
+  ]
+}
