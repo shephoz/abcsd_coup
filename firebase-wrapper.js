@@ -1,8 +1,10 @@
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, child, get, set, onValue } from "firebase/database";
 
-export class FirebaseWrapper {
-  constructor(url) {
+class FirebaseWrapper {
+  constructor() {}
+
+  init(url) {
     this.app = initializeApp({
       databaseURL: url,
     });
@@ -26,3 +28,5 @@ export class FirebaseWrapper {
     return this.db;
   }
 }
+
+export default new FirebaseWrapper();

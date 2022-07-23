@@ -5,48 +5,63 @@
   },
   "deck": [
     {
+      "id": "Duke1",
       "kind": "Duke"
     },
     {
+      "id": "Duke2",
       "kind": "Duke"
     },
     {
+      "id": "Duke3",
       "kind": "Duke"
     },
     {
+      "id": "Assassin1",
       "kind": "Assassin"
     },
     {
+      "id": "Assassin2",
       "kind": "Assassin"
     },
     {
+      "id": "Assassin3",
       "kind": "Assassin"
     },
     {
+      "id": "Captain1",
       "kind": "Captain"
     },
     {
+      "id": "Captain2",
       "kind": "Captain"
     },
     {
+      "id": "Captain3",
       "kind": "Captain"
     },
     {
+      "id": "Ambassador1",
       "kind": "Ambassador"
     },
     {
+      "id": "Ambassador2",
       "kind": "Ambassador"
     },
     {
+      "id": "Ambassador3",
       "kind": "Ambassador"
     },
     {
+      "id": "Contessa1",
       "kind": "Contessa"
     },
     {
+      "id": "Contessa2",
       "kind": "Contessa"
     },
     {
+      "id": "Contessa3",
       "kind": "Contessa"
     }
   ],
